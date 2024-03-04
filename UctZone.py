@@ -88,6 +88,12 @@ class UctZone:
         if self.tau is None:
             raise ValueError("Exit times are not available")
 
+        def select_time(a, b):
+            # Use a beta distribution to pick a point between a, b
+            # Parameters for beta distribution yet to be specified
+            # currently set at 2, 5
+            return np.random.beta(2, 5) * (b - a) + a
+
         p = None * len(self.x)
         p[0] = self.obs_price
 
