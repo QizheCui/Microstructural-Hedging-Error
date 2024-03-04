@@ -1,11 +1,12 @@
 import numpy as np
-import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 class UctZone:
-    def __init__(self, alpha, eta, T):
+    def __init__(self, alpha, eta, T=1):
         self.alpha = alpha  # Tick size
         self.eta = eta  # Aversion of price change
-        self.T = T  # Total time
+        self.T = T  # Total time, default to 1
         self.t = None  # Time grid
 
         self.x = None  # Theoretical price
@@ -90,10 +91,12 @@ class UctZone:
         """
         return np.random.beta(2, 5) * (b - a) + a
 
-    def get_obs_price(self):
+    def get_obs_price(self, jump_mode='beta'):
         """
         Get observed price self.p by connecting the observed price levels self.obs_price
         Select the time to jump using a determined distribution
+        
+        select_time: default to 'beta', can also be 'left' or 'right'(naive)
         """
         if self.x is None:
             raise ValueError("Theoretical price is not available")
@@ -104,8 +107,13 @@ class UctZone:
         p[0] = self.obs_price[0]
 
         for j in range(len(self.tau) - 1):
-            jump_time = self.select_time(self.tau[j], self.tau[j+1])
-            jump_index = np.round(jump_time, 0).astype(int)
+            if jump_mode=='beta':
+                jump_time = self.select_time(self.tau[j], self.tau[j+1])
+                jump_index = np.round(jump_time, 0).astype(int)
+            elif jump_mode=='left':
+                jump_index = self.tau[j]
+            elif jump_mode=='right':
+                jump_index = self.tau[j+1]
             p[jump_index] =self.obs_price[j]
         
         # Connect p
@@ -116,3 +124,48 @@ class UctZone:
         self.p = np.round(p, 2)
         return self.p
     
+    def plot(self, grid=False, exit_time=False, save=False, filename=None):
+        """
+        Plot the theoretical price and observed price
+        grid: whether to add grids as k * alpha, default to False
+        exit_time: whether to mark the exit times, default to False
+        save, filename: whether to save the plot and the filename, default to False and None
+        """
+        if self.x is None:
+            raise ValueError("Theoretical price is not available")
+        if self.p is None:
+            raise ValueError("Observed price is not available")
+        
+        fig, ax = plt.subplots(figsize=(12, 5))
+        pd.Series(index=self.t, data=self.x).plot(
+            lw=0.7, color='teal', ax=ax, label="Theoreteical Price")  # Theoretical price
+        ax.step(self.t, self.p, '--',where='post', 
+                color='coral', lw=0.7, label="Observed Price")  # Observed price
+        
+        # Add grids: k * alpha
+        if grid:
+            ax.set_yticks(np.arange(self.p.min(), self.p.max() + self.alpha, self.alpha))
+            ax.grid(True, linestyle='-', linewidth=0.3, color='gray', alpha=0.3)
+            # Keep 1/5 label
+            y_ticks = ax.get_yticks()
+            new_y_tick_labels = ['' for _ in y_ticks]
+            for i, tick in enumerate(y_ticks):
+                if i % 5 == 0:  # Keep every tenth label
+                    new_y_tick_labels[i] = f'{tick:.2f}'
+            ax.set_yticklabels(new_y_tick_labels)
+
+        # Mark the exit times
+        if exit_time:
+            ax.plot([self.t[i] for i in self.tau],
+                    [self.x[i] for i in self.tau], 'x', color='coral', markersize=4, label="Exit times")
+
+        # Output the file
+        if save:
+            if filename is None:
+                raise ValueError("Please specify the filename")
+            plt.savefig(filename, dpi=200)
+
+        # Show the plot
+        ax.legend()
+        plt.tight_layout()
+        plt.show()
