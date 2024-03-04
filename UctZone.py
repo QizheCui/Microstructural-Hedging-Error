@@ -5,18 +5,18 @@ class UctZone:
         self.alpha = alpha  # Tick size
         self.eta = eta  # Aversion of price change
         self.T = T
+        self.t = None  # Time grid
 
-        self.x = None  # Efficient price
+        self.x = None  # Theoretical price
         self.p = None  # Observed price
     
         self.tau = None # Stopping times when x exits the uct zones
-        self.obs_price = None # Observed price to consider
+        self.obs_price = None # Observed price levels
         
-    def get_eff_price(self, sigma, n, x0=0):
+    def get_eff_price(self, sigma, n, x0=100):
         """
         Simulate geometric brownian motion under the scheme of Euler-Maruyama
         n: number of time steps 
-        T: terminal time
         x0: initial value
         """
         dt = self.T/n
@@ -26,7 +26,8 @@ class UctZone:
         for i in range(1, n):
             x[i] = x[i-1] + sigma * x[i-1] * np.sqrt(dt) * np.random.normal()
         self.x = x
-        return t, self.x
+        self.t = t
+        return self.t, self.x
     
     
     def jump_size(self):
@@ -40,15 +41,15 @@ class UctZone:
     
     def get_exit_times(self):
         """
-        Get exit times self.tau by efficient price self.x
+        Get exit times self.tau by theoretical price self.x
         Get a list of observed price levels self.obs_price
         """
         if self.x is None:
-            raise ValueError("Efficient price is not available")
+            raise ValueError("Theoretical price is not available")
         
-        # First grid and grid price
+        # First observed price k * alpha
         k = self.x[0] // self.alpha
-        if k * self.alpha - self.x[0] < (k + 1) * self.alpha - self.x[0]:
+        if abs(k * self.alpha - self.x[0]) < abs((k + 1) * self.alpha - self.x[0]):
             last_obs = k * self.alpha
         else:
             last_obs = (k + 1) * self.alpha
@@ -58,20 +59,19 @@ class UctZone:
         obs_price = [last_obs]
 
         i = 1
+        L = self.jump_size()  # Initial jump size
         while i < len(self.x):
-            L = self.jump_size()
-            while True:
-                if self.x[i] > last_obs + self.alpha * (L - 0.5 + self.eta):  # ascend
-                    tau.append(i)
-                    last_obs += self.alpha * L
-                    obs_price.append(last_obs)
-                    break
-                elif self.x[i] < last_obs - self.alpha * (L - 0.5 + self.eta):  # descend
-                    tau.append(i)
-                    last_obs -= self.alpha * L
-                    obs_price.append(last_obs)
-                    break
-                i += 1
+            if self.x[i] > last_obs + self.alpha * (L - 0.5 + self.eta):  # ascend
+                tau.append(i)
+                last_obs += self.alpha * L
+                obs_price.append(last_obs)
+                L = self.jump_size()  # Draw the jump size again
+            elif self.x[i] < last_obs - self.alpha * (L - 0.5 + self.eta):  # descend
+                tau.append(i)
+                last_obs -= self.alpha * L
+                obs_price.append(last_obs)
+                L = self.jump_size()  # Draw the jump size again
+            i += 1
         
         self.tau = np.array(tau)
         self.obs_price = np.array(obs_price)
@@ -84,7 +84,7 @@ class UctZone:
         Select the time to jump using a determined distribution
         """
         if self.x is None:
-            raise ValueError("Efficient price is not available")
+            raise ValueError("Theoretical price is not available")
         if self.tau is None:
             raise ValueError("Exit times are not available")
 
@@ -94,18 +94,19 @@ class UctZone:
             # currently set at 2, 5
             return np.random.beta(2, 5) * (b - a) + a
 
-        p = None * len(self.x)
-        p[0] = self.obs_price
+        p = [None] * len(self.x)
+        p[0] = self.obs_price[0]
 
         for j in range(len(self.tau) - 1):
             jump_time = select_time(self.tau[j], self.tau[j+1])
-            p[jump_time] =self.obs_price[j]
+            jump_index = np.round(jump_time, 0).astype(int)
+            p[jump_index] =self.obs_price[j]
         
         # Connect p
         for i in range(len(p)):
             if p[i] is None:
                 p[i] = p[i-1]
         
-        self.p = np.array(p)
+        self.p = np.round(p, 2)
         return self.p
     
