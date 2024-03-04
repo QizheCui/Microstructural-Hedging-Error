@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 A = UctZone(0.2, 0.2, 1)
-A.get_eff_price(0.01, 100)
+A.get_eff_price(0.01, 1000, r=0.05)
 
 A.get_exit_times()
 # print(A.tau)
@@ -12,8 +12,5 @@ A.get_exit_times()
 A.get_obs_price()
 
 pd.Series(index=A.t, data=A.x).plot(lw=0.5, color='black')
-pd.Series(index=A.t, data=A.p).plot(lw=0.5, color='blue')
+plt.step(A.t, A.p, where='post', c='blue', lw=0.5)
 plt.show()
-
-
-
