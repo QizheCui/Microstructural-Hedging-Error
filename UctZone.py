@@ -15,36 +15,39 @@ class UctZone:
         self.tau = None # Stopping times when x exits the uct zones
         self.obs_price = None # Observed price levels
 
-    def get_eff_price(self, sigma, n, r=0, x0=100):
+    def get_eff_price_CEV(self, n, sigma, r=0, x0=100, beta=1):
         """
         Simulate geometric brownian motion under the scheme of Euler-Maruyama
         sigma: volatility
         n: number of time steps 
         r: drift; default to 0
         x0: initial value, default to 100
+        beta: default to 1 for a classic BS model, otherwise a CEV model
         """
-        dt = self.T/n
-        t = np.linspace(0, self.T, n) # time grid
+        dt = self.T / n
+        self.t = np.linspace(0, self.T, n) # time grid
         x = np.zeros(n)
         x[0] = x0
         for i in range(1, n):
             x[i] = x[i-1] + r * x[i-1] * dt + \
-                   sigma * x[i-1] * np.sqrt(dt) * np.random.normal()
+                   sigma * (x[i-1] ** beta) * np.sqrt(dt) * np.random.normal()
         self.x = x
-        self.t = t
-        return self.t, self.x
+        return None
     
     
-    def jump_size(self):
+    def jump_size(self, L_mode):
         """
         Generate jump size: potentially a more sophisticated model
-        Currently fixed at 1
+        L_mode: 'fixed' or 'naive' (currently)
         """
-        L = 1
+        if L_mode == 'fixed':
+            L = 1
+        if L_mode == 'naive':
+            L = np.random.choice([1, 2, 3], p=[0.7, 0.2, 0.1])
         return L
     
     
-    def get_exit_times(self):
+    def get_exit_times(self, L_mode='fixed'):
         """
         Get exit times self.tau by theoretical price self.x
         Get a list of observed price levels self.obs_price
@@ -64,24 +67,24 @@ class UctZone:
         obs_price = [last_obs]
 
         i = 1
-        L = self.jump_size()  # Initial jump size
+        L = self.jump_size(L_mode=L_mode)  # Initial jump size
         while i < len(self.x):
             if self.x[i] > last_obs + self.alpha * (L - 0.5 + self.eta):  # ascend
                 tau.append(i)
                 last_obs += self.alpha * L
                 obs_price.append(last_obs)
-                L = self.jump_size()  # Draw the jump size again
+                L = self.jump_size(L_mode=L_mode)  # Draw the jump size again
             elif self.x[i] < last_obs - self.alpha * (L - 0.5 + self.eta):  # descend
                 tau.append(i)
                 last_obs -= self.alpha * L
                 obs_price.append(last_obs)
-                L = self.jump_size()  # Draw the jump size again
+                L = self.jump_size(L_mode=L_mode)  # Draw the jump size again
             i += 1
         
         self.tau = np.array(tau)
         self.obs_price = np.array(obs_price)
 
-        return self.tau
+        return None
 
     def select_time(self, a, b):
         """
@@ -122,7 +125,7 @@ class UctZone:
                 p[i] = p[i-1]
         
         self.p = np.round(p, 2)
-        return self.p
+        return None
     
     def plot(self, grid=False, exit_time=False, save=False, filename=None):
         """
