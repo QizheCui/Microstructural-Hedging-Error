@@ -13,8 +13,6 @@ This project is based on the paper "On the Microstructural Hedging Error" by Chr
 
   - Plotting with various choices of detail included
 
-- *UctZone.py**: This file implements the uncertainty zone model with various flexible settings. It provides functionality for blahblahblah.
-
 - **Hedging_error.ipynb**: This notebook contains a detailed implementation of the uncertainty zone model, benchmark hedging strategy, and demonstrates the hedging strategy under the uncertainty zone model without noise ($L_1$), with noise hedge for every tick ($L_2$), and with noise hedge for optimal tick ($L_3$).
 
 - **MonteCarlo.ipynb**: This notebook simulates the hedging errors $L_1$, $L_2$, $L_3$ with either 1000 or 100 simulations. It considers different scenarios:
