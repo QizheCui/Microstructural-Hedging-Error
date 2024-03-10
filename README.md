@@ -4,7 +4,16 @@ This project is based on the paper "On the Microstructural Hedging Error" by Chr
 
 ## Overview
 
-- **UctZone.py**: This file implements the uncertainty zone model with various flexible settings. It provides functionality for blahblahblah.
+- **UctZone.py**: This file implement the uncertainty zone model with various flexible setting, with functions to
+  - Generate the efficient price using Black-Scholes GBM or CEV model
+
+  - Calculate exit time using fixed jump size or a naive random jump size
+
+  - Generate the observed price with three jump time modes available
+
+  - Plotting with various choices of detail included
+
+- *UctZone.py**: This file implements the uncertainty zone model with various flexible settings. It provides functionality for blahblahblah.
 
 - **Hedging_error.ipynb**: This notebook contains a detailed implementation of the uncertainty zone model, benchmark hedging strategy, and demonstrates the hedging strategy under the uncertainty zone model without noise ($L_1$), with noise hedge for every tick ($L_2$), and with noise hedge for optimal tick ($L_3$).
 
